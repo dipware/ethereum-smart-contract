@@ -2,12 +2,21 @@
 pragma solidity '0.8.7';
 
 contract Democracy {
-    int256 results;
-    int256 totalVotes;
+    struct Question {
+        string text;
+        string[] choices;
+        uint256[] results;
+    }
+    Question[] ballot;
+    bool locked = false;
+
+    uint256 totalVotes;
+    string[] questions;
+    mapping(uint256 => mapping(uint256 => uint256)) results;
 
     address payable owner;
 
-    mapping(address => int256) public votes;
+    mapping(address => int256) public voted;
     address payable[] voters;
 
     uint256 numVoters;
@@ -18,13 +27,12 @@ contract Democracy {
     }
 
     modifier onlyRegistered() {
-        require(votes[msg.sender] == -1, "Unregistered voter. Cya.");
+        require(voted[msg.sender] == -1, "Unregistered voter. Cya.");
         _;
     }
 
     constructor() {
         totalVotes = 0;
-        results = 0;
         numVoters = 0;
         owner = payable(msg.sender);
     }
@@ -35,8 +43,15 @@ contract Democracy {
 
     receive() external payable onlyOwner {}
 
+    function lock() private {
+        locked = true;
+    }
+
     function getResults() public view returns (int256) {
         return results;
+    }
+    function getResults2(string calldata question, int256 choice) public view returns (int256) {
+        return results2[question][choice];
     }
 
     function getTotalVotes() public view returns (int256) {
