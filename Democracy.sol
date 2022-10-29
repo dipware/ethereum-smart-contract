@@ -7,12 +7,18 @@ contract Democracy {
         string[] choices;
         uint256[] results;
     }
-    Question[] ballot;
+
+    Question ballot;
+
     bool locked = false;
 
     uint256 totalVotes;
-    string[] questions;
-    mapping(uint256 => mapping(uint256 => uint256)) results;
+    // string question;
+    // string[] questions;
+    // string[] choices;
+    // uint[] results;
+    // mapping(uint => string)[] choices;
+    // mapping(uint => mapping(uint256 => uint256)) results;
 
     address payable owner;
 
@@ -31,14 +37,27 @@ contract Democracy {
         _;
     }
 
-    constructor() {
+    modifier whenComplete() {
+        require(locked == true, "Voting in progress. Results unavailable.");
+        _;
+    }
+
+    constructor(
+        string memory _question,
+        string[] memory _choices,
+        address payable[] memory _voters
+    ) payable {
         totalVotes = 0;
         numVoters = 0;
         owner = payable(msg.sender);
-    }
-
-    function destroy() public onlyOwner {
-        selfdestruct(owner);
+        ballot = Question(_question, _choices, new uint256[](_choices.length));
+        // ballot.text = _question;
+        // ballot.choices = _choices;
+        numVoters = _voters.length;
+        voters = _voters;
+        for (uint256 i = 0; i < numVoters; i++) {
+            voted[_voters[i]] = -1;
+        }
     }
 
     receive() external payable onlyOwner {}
@@ -47,36 +66,39 @@ contract Democracy {
         locked = true;
     }
 
-    function getResults() public view returns (int256) {
-        return results;
-    }
-    function getResults2(string calldata question, int256 choice) public view returns (int256) {
-        return results2[question][choice];
+    function getResults() public view whenComplete returns (uint256[] memory) {
+        return ballot.results;
     }
 
-    function getTotalVotes() public view returns (int256) {
-        return totalVotes;
+    function getTopic() public view onlyRegistered returns (string memory) {
+        return ballot.text;
     }
 
-    function sendBallot(int256 ballot) public onlyRegistered {
-        results += ballot;
+    function getChoices() public view onlyRegistered returns (string[] memory) {
+        return ballot.choices;
+    }
+
+    function sendBallot(uint256 _ballot) public onlyRegistered {
+        ballot.results[_ballot]++;
         totalVotes++;
-        votes[msg.sender] = ballot;
-    }
-
-    function registerVoters(address payable[] memory _voters) public onlyOwner {
-        numVoters = _voters.length;
-        voters = _voters;
-        for (uint256 i = 0; i < numVoters; i++) {
-            // init as negative -1 to signify null
-            votes[_voters[i]] = -1;
+        voted[msg.sender] = 1;
+        if (totalVotes == numVoters) {
+            locked = true;
         }
     }
 
-    function fundVoters(uint256 _gasEstimate) public onlyOwner {
-        require(numVoters > 0);
-        for (uint256 i = 0; i < numVoters; i++) {
-            voters[i].transfer(_gasEstimate);
-        }
-    }
+    // function registerVoters(address payable[] memory _voters) public onlyOwner {
+    //     numVoters = _voters.length;
+    //     voters = _voters;
+    //     for (uint256 i = 0; i < numVoters; i++) {
+    //         voted[_voters[i]] = -1;
+    //     }
+    // }
+
+    // function fundVoters(uint256 _gasEstimate) public onlyOwner {
+    //     require(numVoters > 0);
+    //     for (uint256 i = 0; i < numVoters; i++) {
+    //         voters[i].transfer(_gasEstimate);
+    //     }
+    // }
 }
