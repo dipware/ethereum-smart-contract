@@ -1,24 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity '0.8.7';
+pragma solidity '0.8.17';
 
 contract Democracy {
-    struct Question {
-        string text;
-        string[] choices;
-        uint256[] results;
-    }
 
-    Question ballot;
+    string public topic;
+    string[] public choices;
+    uint public numChoices;
+    uint[] public results;
 
-    bool locked = false;
+    bool public started  = false;
+    bool public ended = false;
 
     uint256 totalVotes;
-    // string question;
-    // string[] questions;
-    // string[] choices;
-    // uint[] results;
-    // mapping(uint => string)[] choices;
-    // mapping(uint => mapping(uint256 => uint256)) results;
 
     address payable owner;
 
@@ -27,6 +20,12 @@ contract Democracy {
 
     uint256 numVoters;
 
+    modifier start() {
+        require(msg.sender == owner);
+        require(started == false);
+        _;
+    }
+
     modifier onlyOwner() {
         require(msg.sender == owner, "Ownable: You are not the owner, Bye.");
         _;
@@ -34,71 +33,44 @@ contract Democracy {
 
     modifier onlyRegistered() {
         require(voted[msg.sender] == -1, "Unregistered voter. Cya.");
+        require(started == true);
+        require(ended == false);
         _;
     }
 
-    modifier whenComplete() {
-        require(locked == true, "Voting in progress. Results unavailable.");
-        _;
-    }
-
-    constructor(
-        string memory _question,
-        string[] memory _choices,
-        address payable[] memory _voters
-    ) payable {
-        totalVotes = 0;
-        numVoters = 0;
+    constructor() payable {
         owner = payable(msg.sender);
-        ballot = Question(_question, _choices, new uint256[](_choices.length));
-        // ballot.text = _question;
-        // ballot.choices = _choices;
-        numVoters = _voters.length;
-        voters = _voters;
-        for (uint256 i = 0; i < numVoters; i++) {
-            voted[_voters[i]] = -1;
-        }
     }
 
     receive() external payable onlyOwner {}
 
-    function lock() private {
-        locked = true;
-    }
-
-    function getResults() public view whenComplete returns (uint256[] memory) {
-        return ballot.results;
-    }
-
-    function getTopic() public view onlyRegistered returns (string memory) {
-        return ballot.text;
-    }
-
-    function getChoices() public view onlyRegistered returns (string[] memory) {
-        return ballot.choices;
+    function beginVote(string memory _question,
+        string[] memory _choices,
+        address payable[] memory _voters) public start {
+        totalVotes = 0;
+        topic = _question;
+        numChoices = _choices.length;
+        choices = _choices;
+        numVoters = _voters.length;
+        voters = _voters;
+        // init results to zero
+        for (uint i = 0; i < numChoices; i++) {
+            results.push(0);
+        }
+        // init voted
+        for (uint256 i = 0; i < numVoters; i++) {
+            voted[_voters[i]] = -1;
+        }
+        // commence voting
+        started = true;
     }
 
     function sendBallot(uint256 _ballot) public onlyRegistered {
-        ballot.results[_ballot]++;
+        results[_ballot]++;
         totalVotes++;
         voted[msg.sender] = 1;
         if (totalVotes == numVoters) {
-            locked = true;
+            ended = true;
         }
     }
-
-    // function registerVoters(address payable[] memory _voters) public onlyOwner {
-    //     numVoters = _voters.length;
-    //     voters = _voters;
-    //     for (uint256 i = 0; i < numVoters; i++) {
-    //         voted[_voters[i]] = -1;
-    //     }
-    // }
-
-    // function fundVoters(uint256 _gasEstimate) public onlyOwner {
-    //     require(numVoters > 0);
-    //     for (uint256 i = 0; i < numVoters; i++) {
-    //         voters[i].transfer(_gasEstimate);
-    //     }
-    // }
 }
