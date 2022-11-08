@@ -2,6 +2,7 @@
 pragma solidity '0.8.17';
 
 contract Democracy {
+    string public version = '1.0';
 
     string public topic;
     string[] public choices;
@@ -38,6 +39,7 @@ contract Democracy {
         _;
     }
 
+
     constructor() payable {
         owner = payable(msg.sender);
     }
@@ -65,12 +67,15 @@ contract Democracy {
         started = true;
     }
 
-    function sendBallot(uint256 _ballot) public onlyRegistered {
+    function sendBallot(uint _ballot) public onlyRegistered {
+        require(_ballot >= 0);
+        require(_ballot < numChoices);
         results[_ballot]++;
         totalVotes++;
-        voted[msg.sender] = 1;
+        voted[msg.sender] = int(_ballot);
         if (totalVotes == numVoters) {
             ended = true;
         }
     }
+
 }
